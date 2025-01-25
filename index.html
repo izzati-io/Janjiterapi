@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Rekam Data Janji Terapi - Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Verdana', sans-serif;
+      background: linear-gradient(120deg, #f6d365, #fda085);
+      margin: 0;
+      padding: 20px;
+      color: #2c3e50;
+    }
+    h1, h2 {
+      color: white;
+      background: linear-gradient(45deg, #ff6b6b, #f06595);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    table, th, td {
+      border: 1px solid #ff6b6b;
+    }
+    th {
+      background: linear-gradient(45deg, #ff6b6b, #f06595);
+      color: white;
+      font-weight: bold;
+    }
+    th, td {
+      padding: 15px;
+      text-align: left;
+    }
+    td {
+      font-size: 14px;
+    }
+    input, select, button {
+      padding: 12px;
+      margin: 10px 0;
+      width: 100%;
+      border-radius: 8px;
+      border: 2px solid #ff6b6b;
+      font-size: 16px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #f06595;
+      box-shadow: 0 0 8px rgba(240, 101, 149, 0.8);
+    }
+    button {
+      background: linear-gradient(45deg, #f06595, #ff6b6b);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(45deg, #ff6b6b, #f06595);
+      box-shadow: 0 4px 10px rgba(240, 101, 149, 0.5);
+    }
+    .delete-button {
+      background: linear-gradient(45deg, #ff4757, #ff6b6b);
+    }
+    .delete-button:hover {
+      background: linear-gradient(45deg, #ff6b6b, #ff4757);
+    }
+    .whatsapp-button {
+      background: linear-gradient(45deg, #1dd1a1, #10ac84);
+    }
+    .whatsapp-button:hover {
+      background: linear-gradient(45deg, #10ac84, #1dd1a1);
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    }
+    .form-container {
+      background: linear-gradient(45deg, #10ac84, #1dd1a1);
+      padding: 20px;
+      border-radius: 10px;
+      color: white;
+      margin-bottom: 20px;
+    }
+    .dashboard-title {
+      background: linear-gradient(45deg, #54a0ff, #2e86de);
+      color: white;
+      padding: 10px;
+      text-align: center;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Aplikasi Rekam Data Janji Terapi</h1>
+
+    <div class="form-container">
+      <h2>Tambah Data Pasien</h2>
+      <form id="patientForm">
+        <label for="name">Nama Pasien:</label>
+        <input type="text" id="name" required>
+
+        <label for="phone">No. Telepon:</label>
+        <input type="text" id="phone" required placeholder="Masukkan nomor telepon Indonesia">
+
+        <label for="contacts">Ambil Kontak:</label>
+        <button type="button" id="getContacts">Ambil Kontak</button>
+
+        <label for="date">Tanggal Janji:</label>
+        <input type="date" id="date" required>
+
+        <label for="time">Jam Janji:</label>
+        <input type="time" id="time" required>
+
+        <label for="service">Jenis Terapi:</label>
+        <select id="service">
+          <option value="Totok Punggung">Totok Punggung</option>
+          <option value="Bekam">Bekam</option>
+          <option value="Totok dan Bekam">Totok dan Bekam</option>
+        </select>
+
+        <button type="submit">Simpan Data</button>
+      </form>
+    </div>
+
+    <div class="dashboard-title">
+      <h2>Dashboard Janji Terapi</h2>
+    </div>
+
+    <button id="exportExcel">Ekspor ke Excel</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nama</th>
+          <th>No. Telepon</th>
+          <th>Tanggal</th>
+          <th>Jam</th>
+          <th>Jenis Terapi</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="appointmentList"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const patientForm = document.getElementById('patientForm');
+    const appointmentList = document.getElementById('appointmentList');
+    const exportExcelButton = document.getElementById('exportExcel');
+    const getContactsButton = document.getElementById('getContacts');
+    let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
+
+    function displayAppointments() {
+      appointmentList.innerHTML = '';
+      appointments.forEach((appointment, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${appointment.name}</td>
+          <td>${appointment.phone}</td>
+          <td>${appointment.date}</td>
+          <td>${appointment.time}</td>
+          <td>${appointment.service}</td>
+          <td>
+            <button class="delete-button" onclick="deleteAppointment(${index})">Hapus</button>
+            <button class="whatsapp-button" onclick="contactViaWhatsApp(${index})">WhatsApp</button>
+          </td>
+        `;
+        appointmentList.appendChild(row);
+      });
+    }
+
+    patientForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const newAppointment = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        service: document.getElementById('service').value,
+      };
+      appointments.push(newAppointment);
+      localStorage.setItem('appointments', JSON.stringify(appointments));
+      patientForm.reset();
+      displayAppointments();
+    });
+
+    function deleteAppointment(index) {
+      appointments.splice(index, 1);
+      localStorage.setItem('appointments', JSON.stringify(appointments));
+      displayAppointments();
+    }
+
+    function contactViaWhatsApp(index) {
+      const phone = appointments[index].phone;
+      const url = `https://wa.me/${phone}`;
+      window.open(url, '_blank');
+    }
+
+    exportExcelButton.addEventListener('click', () => {
+      const worksheet = XLSX.utils.json_to_sheet(appointments);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Janji Terapi');
+      XLSX.writeFile(workbook, 'Janji_Terapi.xlsx');
+    });
+
+    getContactsButton.addEventListener('click', async () => {
+      try {
+        if ('contacts' in navigator && 'ContactsManager' in window) {
+          const props = ['name', 'tel'];
+          const opts = { multiple: false };
+          const contacts = await navigator.contacts.select(props, opts);
+
+          if (contacts.length > 0) {
+            const contact = contacts[0];
+            document.getElementById('name').value = contact.name[0];
+            document.getElementById('phone').value = contact.tel[0];
+          }
+        } else {
+          alert('Browser Anda tidak mendukung fitur pengambilan kontak.');
+        }
+      } catch (error) {
+        console.error('Gagal mengambil kontak:', error);
+      }
+    });
+
+    displayAppointments();
+  </script>
+</body>
+</html>
